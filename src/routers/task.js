@@ -17,11 +17,36 @@ router.post('/tasks', auth, async (req, res) => {
     }
 })
 
-
+// GET/tasks?completed=false
+// GET/tasks?limit=10&page=0
+// GET/tasks/sortBy=_createdAt
 router.get("/tasks", auth, async(req, res) => {
+    const match = {}
+    const sort = {}
+
+    if(req.query.completed) {
+        match.completed = req.query.completed === "true"
+    }
+
+    if(req.sortBy){
+        const parts = req.query.sortBy.split(":")
+        sort[parts[0]] = parts[1] ==="desc" ? -1 : 1 // sort[parts[0]] because it's a dynamic variable, not a static name
+    }
     try {
-        const tasks = await Task.find({owner: req.user._id})
-        res.status(201).send(tasks)
+        // const tasks = await Task.find({owner: req.user._id})
+        await req.user.populate({
+            path:'tasks',
+            match,
+            options: {
+                limit: parseInt(req.query.limit),
+                skip: parseInt(req.query.skip),
+                sort: {
+                    createdAt: -1    
+                }
+            }
+        }).execPopulate()
+
+        res.send(req.user.tasks)
     } catch (e) {
         res.status(500).send()
     }
